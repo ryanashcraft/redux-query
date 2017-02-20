@@ -107,23 +107,43 @@ function getSchema(reddit) {
     return subreddit;
 }
 
-const AppContainer = connectRequest((props) => ({
-    url: getRedditUrl(props.selectedReddit),
-    transform: (response) => normalize(response, getSchema(props.selectedReddit)).entities,
-    update: {
-      posts: (prevPosts, posts) => {
-        return {
-          ...prevPosts,
-          ...posts,
-      };
-    },
-      reddits: (prevReddits, reddits) => {
-        return {
-          ...prevReddits,
-          ...reddits,
-      };
+const AppContainer = connectRequest((props) => ([
+  {
+      url: getRedditUrl(props.selectedReddit),
+      transform: (response) => normalize(response, getSchema(props.selectedReddit)).entities,
+      update: {
+        posts: (prevPosts, posts) => {
+          return {
+            ...prevPosts,
+            ...posts,
+        };
+      },
+        reddits: (prevReddits, reddits) => {
+          return {
+            ...prevReddits,
+            ...reddits,
+        };
+      },
     },
   },
-}))(App);
+  {
+      url: getRedditUrl('apple'),
+      transform: (response) => normalize(response, getSchema('apple')).entities,
+      update: {
+        posts: (prevPosts, posts) => {
+          return {
+            ...prevPosts,
+            ...posts,
+        };
+      },
+        reddits: (prevReddits, reddits) => {
+          return {
+            ...prevReddits,
+            ...reddits,
+        };
+      },
+    },
+  },
+]))(App);
 
 export default connect(mapStateToProps)(AppContainer);

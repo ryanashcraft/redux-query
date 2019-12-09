@@ -5,7 +5,7 @@ import { applyMiddleware, createStore, combineReducers } from 'redux';
 
 import { entitiesReducer, queriesReducer, queryMiddleware, querySelectors } from 'redux-query';
 
-import connectRequest from '../../src/components/connect-request';
+import connectRequest, { headersChanged } from '../../src/components/connect-request';
 
 export const getQueries = state => state.queries;
 export const getEntities = state => state.entities;
@@ -51,6 +51,51 @@ let store;
 const App = props => {
   return <Provider store={store}>{props.children}</Provider>;
 };
+
+describe('headers changed', () => {
+  const one = {
+    options: {
+      headers: {
+        'mario': 'mama mia!'
+      }
+    }
+  };
+  const two = {
+    options: {
+      headers: {
+        'luigi': 'aw no!'
+      }
+    }
+  };
+
+  const three = {
+    options: {
+      headers: {
+        'bowser': undefined
+      }
+    }
+  };
+
+  const four = {
+    options: {
+      headers: {
+        'bowser': null
+      }
+    }
+  };
+
+  it('changes headers when they update', () => {
+    expect(headersChanged([one], [two])).toBe(true);
+  });
+  
+  it('does not change headers when they update', () => {
+    expect(headersChanged([one], [one])).toBe(undefined);
+  });
+
+  it('handles null and undefined', () => {
+    expect(headersChanged([three], [four])).toBe(undefined);
+  })
+});
 
 describe('useRequest', () => {
   beforeEach(() => {

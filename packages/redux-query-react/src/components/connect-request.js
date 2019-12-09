@@ -54,6 +54,28 @@ const diffQueryConfigs = (
   return { cancelKeys, requestQueryConfigs };
 };
 
+export const headersChanged = (
+  queryConfigs: Array<QueryConfig>,
+  previousQueryConfigs: Array<QueryConfig>,
+) => {
+  for (let i = 0; i < queryConfigs.length; i++) {
+    if (previousQueryConfigs[i] && queryConfigs[i] && previousQueryConfigs[i].options && queryConfigs[i].options) {
+      const prevHeaders = previousQueryConfigs[i].options.headers;
+      const headers = queryConfigs[i].options.headers;
+
+      if (prevHeaders != null && headers != null) {
+        const prevHeaderValues = Object.values(prevHeaders);
+        const diffHeaders = Object.values(headers).some(function (value, i) {
+          return prevHeaderValues[i] != value;
+        });
+        if (diffHeaders) {
+          return true;
+        }
+      }
+    }
+  }
+};
+
 /**
  * This hook memoizes the list of query configs that are returned form the `mapPropsToConfigs`
  * function. It also transforms the query configs to set `retry` to `true` and pass a
@@ -89,6 +111,7 @@ const useMemoizedQueryConfigs = <Config>(
     )
     .filter(Boolean);
   const [memoizedQueryConfigs, setMemoizedQueryConfigs] = React.useState(queryConfigs);
+  const previousQueryConfigs = React.useRef<Array<QueryConfig>>(queryConfigs);
   const previousQueryKeys = React.useRef<Array<QueryKey>>(
     queryConfigs.map(getQueryKey).filter(Boolean),
   );
@@ -98,12 +121,14 @@ const useMemoizedQueryConfigs = <Config>(
 
     if (
       queryKeys.length !== previousQueryKeys.current.length ||
-      queryKeys.some((queryKey, i) => previousQueryKeys.current[i] !== queryKey)
+      queryKeys.some((queryKey, i) => previousQueryKeys.current[i] !== queryKey) ||
+      headersChanged(queryConfigs, previousQueryConfigs.current)
     ) {
       previousQueryKeys.current = queryKeys;
+      previousQueryConfigs.current = queryConfigs;
       setMemoizedQueryConfigs(queryConfigs);
     }
-  }, [queryConfigs]);
+  }, [queryConfigs, previousQueryConfigs]);
 
   return memoizedQueryConfigs;
 };

@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { render, waitForElement, getByTestId, fireEvent } from '@testing-library/react';
-import { Provider, useSelector, connect } from 'react-redux';
+import { Provider, useSelector } from 'react-redux';
 import { applyMiddleware, createStore, combineReducers } from 'redux';
+import { entitiesReducer, queriesReducer, queryMiddleware } from 'redux-query';
 
-import { entitiesReducer, queriesReducer, queryMiddleware, querySelectors } from 'redux-query';
-
-import connectRequest, { headersChanged } from '../../src/components/connect-request';
+import useRequests from '../../src/hooks/use-requests';
+import ReduxQueryProvider from '../../src/components/Provider';
 
 export const getQueries = state => state.queries;
 export const getEntities = state => state.entities;
@@ -37,6 +37,18 @@ const mockNetworkInterface = url => {
 
           callback(null, status, body, text, headers);
         }, artificialNetworkDelay);
+      }
+      if (url === '/test') {
+        timeoutId = setTimeout(() => {
+          const status = 200;
+          const body = {
+            message: apiMessage,
+          };
+          const text = JSON.stringify(body);
+          const headers = {};
+
+          callback(null, status, body, text, headers);
+        }, artificialNetworkDelay);
       } else {
         timeoutId = setTimeout(() => {
           callback(null, 404, {}, '{}', {});
@@ -49,10 +61,14 @@ const mockNetworkInterface = url => {
 let store;
 
 const App = props => {
-  return <Provider store={store}>{props.children}</Provider>;
+  return (
+    <Provider store={store}>
+      <ReduxQueryProvider queriesSelector={getQueries}>{props.children}</ReduxQueryProvider>
+    </Provider>
+  );
 };
 
-describe('useRequest', () => {
+describe('useRequests', () => {
   beforeEach(() => {
     store = createStore(
       reducer,
@@ -61,13 +77,22 @@ describe('useRequest', () => {
   });
 
   it('loads data initially and supports refresh', async () => {
-    const Content = props => {
+    const Content = () => {
+      const [{ isPending }, refresh] = useRequests([
+        {
+          url: '/api',
+          update: {
+            message: (prevValue, newValue) => newValue,
+          },
+        },
+        {
+          url: '/test',
+          update: {
+            message: (prevValue, newValue) => newValue,
+          },
+        },
+      ]);
       const message = useSelector(state => state.entities.message);
-      const isPending = useSelector(state => {
-        const queryState = state.queries['{"url":"/api"}'];
-
-        return queryState ? queryState.isPending : false;
-      });
 
       if (isPending) {
         return <div data-testid="loading-content">loading</div>;
@@ -76,23 +101,16 @@ describe('useRequest', () => {
       return (
         <div>
           <div data-testid="loaded-content">{message}</div>
-          <button data-testid="refresh-button" onClick={props.forceRequest}>
+          <button data-testid="refresh-button" onClick={refresh}>
             refresh
           </button>
         </div>
       );
     };
 
-    const ContentContainer = connectRequest(() => ({
-      url: '/api',
-      update: {
-        message: (_, newValue) => newValue,
-      },
-    }))(Content);
-
     const { container } = render(
       <App>
-        <ContentContainer />
+        <Content />
       </App>,
     );
 
@@ -123,13 +141,22 @@ describe('useRequest', () => {
   });
 
   it('cancels pending requests as part of cleanup', async () => {
-    const Content = props => {
+    const Content = () => {
+      const [{ isPending }, refresh] = useRequests([
+        {
+          url: '/api',
+          update: {
+            message: (prevValue, newValue) => newValue,
+          },
+        },
+        {
+          url: '/test',
+          update: {
+            message: (prevValue, newValue) => newValue,
+          },
+        },
+      ]);
       const message = useSelector(state => state.entities.message);
-      const isPending = useSelector(state => {
-        const queryState = state.queries['{"url":"/api"}'];
-
-        return queryState ? queryState.isPending : false;
-      });
 
       if (isPending) {
         return <div data-testid="loading-content">loading</div>;
@@ -138,26 +165,19 @@ describe('useRequest', () => {
       return (
         <div>
           <div data-testid="loaded-content">{message}</div>
-          <button data-testid="refresh-button" onClick={props.forceRequest}>
+          <button data-testid="refresh-button" onClick={refresh}>
             refresh
           </button>
         </div>
       );
     };
 
-    const ContentContainer = connectRequest(() => ({
-      url: '/api',
-      update: {
-        message: (_, newValue) => newValue,
-      },
-    }))(Content);
-
     const Router = () => {
       const [path, setPath] = React.useState('/');
 
       return (
         <div>
-          {path === '/' ? <ContentContainer /> : <div data-testid="404">404</div>}
+          {path === '/' ? <Content /> : <div data-testid="404">404</div>}
           <a
             data-testid="broken-link"
             href="/broken-link"
@@ -188,13 +208,13 @@ describe('useRequest', () => {
       </App>,
     );
 
-    // Initial loading of the component that has the useRequest hook
+    // Initial loading of the component that has the useRequests hook
 
     let loadingContentNode = getByTestId(container, 'loading-content');
     expect(loadingContentNode.textContent).toBe('loading');
 
     // Click broken link before component has finished loading. By clicking the link, we are
-    // unmounting the component that has the useRequest hook, triggering the network request to be
+    // unmounting the component that has the useRequests hook, triggering the network request to be
     // canceled.
 
     let brokenLinkNode = await waitForElement(() => getByTestId(container, 'broken-link'));
@@ -225,12 +245,8 @@ describe('useRequest', () => {
 
   it('does nothing if query config is null', async () => {
     const Content = () => {
+      const [{ isPending }] = useRequests(null);
       const message = useSelector(state => state.entities.message);
-      const isPending = useSelector(state => {
-        const queryState = state.queries['{"url":"/api"}'];
-
-        return queryState ? queryState.isPending : false;
-      });
 
       if (isPending) {
         return <div data-testid="loading-content">loading</div>;
@@ -243,11 +259,9 @@ describe('useRequest', () => {
       );
     };
 
-    const ContentContainer = connectRequest(() => null)(Content);
-
     const { container } = render(
       <App>
-        <ContentContainer />
+        <Content />
       </App>,
     );
 
@@ -255,69 +269,5 @@ describe('useRequest', () => {
 
     let loadedContentNode = getByTestId(container, 'loaded-content');
     expect(loadedContentNode.textContent).toBe('');
-  });
-
-  it('does not cancel all in-flight requests when list of query configs change', async () => {
-    const Content = () => {
-      const message1 = useSelector(state => state.entities.message1);
-      const message2 = useSelector(state => state.entities.message2);
-
-      return (
-        <div>
-          {!!message1 && <div data-testid="loaded-message1">{message1}</div>}
-          {!!message2 && <div data-testid="loaded-message2">{message2}</div>}
-        </div>
-      );
-    };
-
-    const mapStateToProps = state => {
-      const isFirstRequestLoading = querySelectors.isPending(state.queries, {
-        url: '/api',
-      });
-
-      return {
-        isFirstRequestLoading,
-      };
-    };
-
-    const mapPropsToConfigs = props => {
-      return [
-        {
-          url: '/api',
-          update: {
-            message1: () => 'loaded',
-          },
-        },
-        !props.isFirstRequestLoading && {
-          url: '/api',
-          body: {
-            a: 'a',
-          },
-          update: {
-            message2: () => 'loaded',
-          },
-        },
-      ];
-    };
-
-    const ContentContainer = connect(mapStateToProps)(connectRequest(mapPropsToConfigs)(Content));
-
-    const { container } = render(
-      <App>
-        <ContentContainer />
-      </App>,
-    );
-
-    // Check that query begins again
-
-    const loadedMessageNode = await waitForElement(() => getByTestId(container, 'loaded-message1'));
-    expect(loadedMessageNode.textContent).toBe('loaded');
-
-    // Loaded now
-
-    const loadedMessage2Node = await waitForElement(() =>
-      getByTestId(container, 'loaded-message2'),
-    );
-    expect(loadedMessage2Node.textContent).toBe('loaded');
   });
 });

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { getQueryKey } from 'redux-query';
 
 import type { QueryConfig, QueryKey } from 'redux-query/types.js.flow';
+import { headersChanged } from '../headers';
 
 const identity = x => x;
 
@@ -38,6 +39,7 @@ const useMemoizedQueryConfigs = (
         .filter(Boolean)
     : [];
   const [memoizedQueryConfigs, setMemoizedQueryConfigs] = React.useState(queryConfigs);
+  const previousQueryConfigs = React.useRef<Array<QueryConfig>>(queryConfigs);
   const previousQueryKeys = React.useRef<Array<QueryKey>>(
     queryConfigs.map(getQueryKey).filter(Boolean),
   );
@@ -47,12 +49,14 @@ const useMemoizedQueryConfigs = (
 
     if (
       queryKeys.length !== previousQueryKeys.current.length ||
-      queryKeys.some((queryKey, i) => previousQueryKeys.current[i] !== queryKey)
+      queryKeys.some((queryKey, i) => previousQueryKeys.current[i] !== queryKey) ||
+      headersChanged(queryConfigs, previousQueryConfigs)
     ) {
       previousQueryKeys.current = queryKeys;
+      previousQueryConfigs.current = queryConfigs;
       setMemoizedQueryConfigs(queryConfigs);
     }
-  }, [queryConfigs]);
+  }, [queryConfigs, previousQueryConfigs]);
 
   return memoizedQueryConfigs;
 };

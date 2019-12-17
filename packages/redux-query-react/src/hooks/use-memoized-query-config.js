@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { getQueryKey } from 'redux-query';
 import type { QueryConfig } from 'redux-query/types.js.flow';
+import { headersChanged } from '../headers';
 
 const identity = x => x;
 
@@ -18,12 +19,17 @@ const useMemoizedQueryConfig = (
     providedQueryConfig ? transform(providedQueryConfig) : null,
   );
   const previousQueryKey = React.useRef(getQueryKey(providedQueryConfig));
+  const previousQueryConfig = React.useRef(providedQueryConfig);
 
   React.useEffect(() => {
     const queryKey = getQueryKey(providedQueryConfig);
 
-    if (queryKey !== previousQueryKey.current) {
+    if (
+      queryKey !== previousQueryKey.current ||
+      headersChanged([queryConfig], [previousQueryConfig])
+    ) {
       previousQueryKey.current = queryKey;
+      previousQueryConfig.current = queryConfig;
       setQueryConfig(providedQueryConfig ? transform(providedQueryConfig) : null);
     }
   }, [providedQueryConfig, transform]);

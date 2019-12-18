@@ -26,7 +26,7 @@ const useMemoizedQueryConfig = (
 
     if (
       queryKey !== previousQueryKey.current ||
-      headersChanged([queryConfig], [previousQueryConfig])
+      headersChanged([queryConfig], [previousQueryConfig.current])
     ) {
       previousQueryKey.current = queryKey;
       previousQueryConfig.current = queryConfig;

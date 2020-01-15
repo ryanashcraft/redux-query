@@ -1,3 +1,6 @@
+// @flow
+import type { QueryConfig } from 'redux-query/types.js.flow';
+
 export const headersChanged = (
   queryConfigs: Array<QueryConfig>,
   previousQueryConfigs: Array<QueryConfig>,

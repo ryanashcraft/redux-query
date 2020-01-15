@@ -26,10 +26,12 @@ const useMemoizedQueryConfig = (
 
     if (
       queryKey !== previousQueryKey.current ||
-      headersChanged([queryConfig], [previousQueryConfig.current])
+      (providedQueryConfig != null &&
+        previousQueryConfig.current != null &&
+        headersChanged([providedQueryConfig], [previousQueryConfig.current]))
     ) {
       previousQueryKey.current = queryKey;
-      previousQueryConfig.current = queryConfig;
+      previousQueryConfig.current = providedQueryConfig;
       setQueryConfig(providedQueryConfig ? transform(providedQueryConfig) : null);
     }
   }, [providedQueryConfig, transform]);

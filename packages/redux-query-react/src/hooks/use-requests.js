@@ -109,12 +109,12 @@ const useRequests = (
   const queriesState = useQueriesState(queryConfigs);
 
   const forceRequest = React.useCallback(() => {
-    queryConfigs.forEach(requestReduxAction => {
-      dispatchRequestToRedux({
+    return Promise.all(queryConfigs.map(requestReduxAction => {
+      return dispatchRequestToRedux({
         ...requestReduxAction,
         force: true,
       });
-    });
+    }));
   }, [dispatchRequestToRedux, queryConfigs]);
 
   React.useEffect(() => {

@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 
-import useRequest from '../../src/hooks/use-requests';
+import useRequests from '../../src/hooks/use-requests';
 
 const Card = () => {
-  const [{ isPending }] = useRequest([
+  const [{ isPending }] = useRequests([
     {
       url: '/api',
     },
